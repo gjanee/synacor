@@ -15025,7 +15025,7 @@ What do you do?
 <div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div><div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>Eyeballing the grid, we may need to visit rooms multiple times to form a correct expression, so we use breadth-first search (BFS) to examine all possible paths.  The journal hints at needing to complete the path quickly; breadth-first search will automatically find the shortest path.  A couple subtle points.  One, in keeping track of states we've previously seen, we qualify a room with the current running value since a room may be visited multiple times but with different values each time.  This level of state is sufficient: the first time we are in a particular room with a particular value, that will necessarily represent the shortest path to achieve that value at that point.  Two, we must avoid revisiting the antechamber, as the orb evaporates if we do.</p>
+<p>Eyeballing the grid, we may need to visit rooms multiple times to form a correct expression, so we use breadth-first search (BFS) to examine all possible paths.  The journal hints at needing to complete the path quickly; breadth-first search will automatically find the shortest path.  Some subtle points.  One, we characterize our current state as both the room we're in and the current running value; in this way, we can visit rooms multiple times, but only with different values.  Two, we must avoid revisiting the antechamber, for the orb evaporates if we do.  And three, we can visit the room before the vault door only once, when we have the correct value and are ready to enter (there actually is a shortest path that visits the vault door room multiple times, but the orb evaporates the first time that room is entered since the value is incorrect at that point).</p>
 
 </div>
 </div>
@@ -15035,7 +15035,7 @@ What do you do?
 <div class="prompt input_prompt">In&nbsp;[21]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">namedtuple</span><span class="p">,</span> <span class="n">deque</span>
 <span class="kn">from</span> <span class="nn">operator</span> <span class="kn">import</span> <span class="n">add</span><span class="p">,</span> <span class="n">sub</span><span class="p">,</span> <span class="n">mul</span>
 
 <span class="n">grid</span> <span class="o">=</span> <span class="p">[</span>
@@ -15056,29 +15056,30 @@ What do you do?
 
 <span class="k">def</span> <span class="nf">bfs</span><span class="p">():</span>
     <span class="n">start_node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">22</span><span class="p">)</span>
-    <span class="n">seen</span> <span class="o">=</span> <span class="p">{</span><span class="n">start_node</span><span class="p">}</span>
-    <span class="n">frontier</span> <span class="o">=</span> <span class="p">{</span><span class="n">start_node</span><span class="p">}</span>
-    <span class="n">paths</span> <span class="o">=</span> <span class="p">{</span><span class="n">start_node</span><span class="p">:</span> <span class="p">[]}</span>
-    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-        <span class="n">new_frontier</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">frontier</span><span class="p">:</span>  <span class="c1"># for each node on the frontier</span>
-            <span class="k">for</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dc</span><span class="p">,</span> <span class="n">direction</span> <span class="ow">in</span> <span class="n">deltas</span><span class="p">:</span>  <span class="c1"># for each direction to go in</span>
-                <span class="n">r</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">n</span><span class="o">.</span><span class="n">row</span><span class="o">+</span><span class="n">dr</span><span class="p">,</span> <span class="n">n</span><span class="o">.</span><span class="n">col</span><span class="o">+</span><span class="n">dc</span>
-                <span class="k">if</span> <span class="n">r</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="ow">or</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span>
-                    <span class="k">continue</span>
-                <span class="k">if</span> <span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>  <span class="c1"># avoid the antechamber</span>
-                    <span class="k">continue</span>
-                <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="n">r</span><span class="p">][</span><span class="n">c</span><span class="p">])</span> <span class="ow">is</span> <span class="nb">int</span><span class="p">:</span>
-                    <span class="n">m</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">grid</span><span class="p">[</span><span class="n">n</span><span class="o">.</span><span class="n">row</span><span class="p">][</span><span class="n">n</span><span class="o">.</span><span class="n">col</span><span class="p">](</span><span class="n">n</span><span class="o">.</span><span class="n">val</span><span class="p">,</span> <span class="n">grid</span><span class="p">[</span><span class="n">r</span><span class="p">][</span><span class="n">c</span><span class="p">]))</span>
+    <span class="n">seen</span> <span class="o">=</span> <span class="p">{</span><span class="n">start_node</span><span class="p">:</span> <span class="p">[]}</span>
+    <span class="n">frontier</span> <span class="o">=</span> <span class="n">deque</span><span class="p">([</span><span class="n">start_node</span><span class="p">])</span>
+    <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">frontier</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">n</span> <span class="o">=</span> <span class="n">frontier</span><span class="o">.</span><span class="n">popleft</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">dr</span><span class="p">,</span> <span class="n">dc</span><span class="p">,</span> <span class="n">direction</span> <span class="ow">in</span> <span class="n">deltas</span><span class="p">:</span>
+            <span class="n">r</span><span class="p">,</span> <span class="n">c</span> <span class="o">=</span> <span class="n">n</span><span class="o">.</span><span class="n">row</span><span class="o">+</span><span class="n">dr</span><span class="p">,</span> <span class="n">n</span><span class="o">.</span><span class="n">col</span><span class="o">+</span><span class="n">dc</span>
+            <span class="k">if</span> <span class="n">r</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span> <span class="ow">or</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>  <span class="c1"># avoid the antechamber</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">grid</span><span class="p">[</span><span class="n">r</span><span class="p">][</span><span class="n">c</span><span class="p">])</span> <span class="ow">is</span> <span class="nb">int</span><span class="p">:</span>
+                <span class="n">nn</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">grid</span><span class="p">[</span><span class="n">n</span><span class="o">.</span><span class="n">row</span><span class="p">][</span><span class="n">n</span><span class="o">.</span><span class="n">col</span><span class="p">](</span><span class="n">n</span><span class="o">.</span><span class="n">val</span><span class="p">,</span> <span class="n">grid</span><span class="p">[</span><span class="n">r</span><span class="p">][</span><span class="n">c</span><span class="p">]))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">nn</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">n</span><span class="o">.</span><span class="n">val</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">nn</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+                <span class="n">seen</span><span class="p">[</span><span class="n">nn</span><span class="p">]</span> <span class="o">=</span> <span class="n">seen</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">+</span><span class="p">[</span><span class="n">direction</span><span class="p">]</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">):</span>  <span class="c1"># if before vault door</span>
+                    <span class="k">if</span> <span class="n">nn</span><span class="o">.</span><span class="n">val</span> <span class="o">==</span> <span class="mi">30</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="n">seen</span><span class="p">[</span><span class="n">nn</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">pass</span>  <span class="c1"># abandon this path</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="n">m</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">n</span><span class="o">.</span><span class="n">val</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">m</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
-                    <span class="n">paths</span><span class="p">[</span><span class="n">m</span><span class="p">]</span> <span class="o">=</span> <span class="n">paths</span><span class="p">[</span><span class="n">n</span><span class="p">]</span><span class="o">+</span><span class="p">[</span><span class="n">direction</span><span class="p">]</span>
-                    <span class="k">if</span> <span class="n">m</span> <span class="o">==</span> <span class="n">Node</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">30</span><span class="p">):</span>
-                        <span class="k">return</span> <span class="n">paths</span><span class="p">[</span><span class="n">m</span><span class="p">]</span>
-                    <span class="n">new_frontier</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
-        <span class="n">seen</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">new_frontier</span><span class="p">)</span>
-        <span class="n">frontier</span> <span class="o">=</span> <span class="n">new_frontier</span>
+                    <span class="n">frontier</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">None</span>
 
 <span class="n">path</span> <span class="o">=</span> <span class="n">bfs</span><span class="p">()</span>
 <span class="n">path</span>
